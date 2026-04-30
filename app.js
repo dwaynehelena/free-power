@@ -14,6 +14,44 @@ const batteryScenarios = [
   { name: "Highest observed OVO paid-window day", usable: 18.09123841247981 },
 ];
 
+const batteryOptions = [
+  {
+    name: "Single Tesla PW3",
+    usable: 13.5,
+    chargeLimit: 5,
+    note: "Below p95 target",
+  },
+  {
+    name: "Sungrow 19.2 kWh",
+    usable: 19.2,
+    chargeLimit: 10,
+    note: "Best-fit value",
+  },
+  {
+    name: "Sigenergy 20 kWh",
+    usable: 20,
+    chargeLimit: 8,
+    note: "Modular fit",
+  },
+  {
+    name: "Tesla PW3 + Expansion",
+    usable: 27,
+    chargeLimit: 5,
+    note: "Charge-limited today",
+  },
+  {
+    name: "Sigenergy 23.4 kWh+",
+    usable: 23.4,
+    chargeLimit: 10,
+    note: "Headroom option",
+  },
+];
+
+const measuredFreeWindowLoad = {
+  ovo: 5.463177505182682 / 3,
+  globird: 6.222270324697016 / 4,
+};
+
 const currency = new Intl.NumberFormat("en-AU", {
   style: "currency",
   currency: "AUD",
@@ -117,6 +155,102 @@ function chargePower(usable, hours) {
   return usable / 0.9 / hours;
 }
 
+function drawChargeChart() {
+  const canvas = document.getElementById("chargeChart");
+  if (!canvas) return;
+
+  const ctx = canvas.getContext("2d");
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * ratio;
+  canvas.height = 360 * ratio;
+  ctx.scale(ratio, ratio);
+
+  const width = rect.width;
+  const height = 360;
+  const padding = { top: 34, right: 24, bottom: 84, left: 58 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const maxKw = Math.max(
+    ...batteryOptions.flatMap((option) => [
+      chargePower(option.usable, 3) + measuredFreeWindowLoad.ovo,
+      chargePower(option.usable, 4) + measuredFreeWindowLoad.globird,
+      option.chargeLimit,
+    ]),
+  ) * 1.18;
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "#d8ded7";
+  ctx.lineWidth = 1;
+  ctx.font = "12px Inter, system-ui, sans-serif";
+  ctx.fillStyle = "#60707a";
+
+  for (let i = 0; i <= 5; i += 1) {
+    const y = padding.top + chartHeight * (i / 5);
+    const label = maxKw - maxKw * (i / 5);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+    ctx.textAlign = "right";
+    ctx.fillText(`${label.toFixed(1)} kW`, padding.left - 8, y + 4);
+  }
+
+  const groupWidth = chartWidth / batteryOptions.length;
+  const barWidth = Math.min(28, groupWidth / 4);
+
+  batteryOptions.forEach((option, index) => {
+    const center = padding.left + groupWidth * index + groupWidth / 2;
+    const ovoKw = chargePower(option.usable, 3);
+    const globirdKw = chargePower(option.usable, 4);
+    const bars = [
+      { x: center - barWidth - 3, value: ovoKw, load: measuredFreeWindowLoad.ovo, color: "#285f9e" },
+      { x: center + 3, value: globirdKw, load: measuredFreeWindowLoad.globird, color: "#16805a" },
+    ];
+
+    bars.forEach((bar) => {
+      const barHeight = (bar.value / maxKw) * chartHeight;
+      const loadHeight = (bar.load / maxKw) * chartHeight;
+      const y = padding.top + chartHeight - barHeight;
+      const loadY = y - loadHeight;
+      ctx.fillStyle = bar.color;
+      ctx.fillRect(bar.x, y, barWidth, barHeight);
+      ctx.fillStyle = "#c7ced1";
+      ctx.fillRect(bar.x, loadY, barWidth, loadHeight);
+      ctx.fillStyle = "#182026";
+      ctx.textAlign = "center";
+      ctx.font = "700 11px Inter, system-ui, sans-serif";
+      ctx.fillText((bar.value + bar.load).toFixed(1), bar.x + barWidth / 2, loadY - 7);
+    });
+
+    const limitY = padding.top + chartHeight - (option.chargeLimit / maxKw) * chartHeight;
+    ctx.strokeStyle = "#b44d42";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(center - barWidth * 1.45, limitY);
+    ctx.lineTo(center + barWidth * 1.45, limitY);
+    ctx.stroke();
+
+    ctx.save();
+    ctx.translate(center, height - 22);
+    ctx.rotate(-0.32);
+    ctx.fillStyle = "#60707a";
+    ctx.font = "700 11px Inter, system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.fillText(option.name, 0, 0);
+    ctx.restore();
+  });
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#60707a";
+  ctx.font = "700 12px Inter, system-ui, sans-serif";
+  ctx.fillText("Average free-window grid draw: battery charging plus measured house load", padding.left, 20);
+  ctx.fillStyle = "#b44d42";
+  ctx.fillText("red tick = battery charge limit", width - padding.right - 175, 20);
+}
+
 function renderBattery() {
   const table = document.getElementById("batteryTable");
   table.innerHTML = batteryScenarios
@@ -160,7 +294,10 @@ function renderBattery() {
   });
 }
 
-window.addEventListener("resize", drawPlanChart);
+window.addEventListener("resize", () => {
+  drawPlanChart();
+  drawChargeChart();
+});
 document.getElementById("annualGap").addEventListener("input", updateBreakEven);
 document.getElementById("avoidedRate").addEventListener("input", updateBreakEven);
 
@@ -168,3 +305,4 @@ renderPlanList();
 renderBattery();
 updateBreakEven();
 drawPlanChart();
+drawChargeChart();

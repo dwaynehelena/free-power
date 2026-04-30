@@ -135,6 +135,30 @@
             </tbody>
           </table>
         </div>
+        <div class="charge-chart-block">
+          <div class="section-heading compact-heading">
+            <h3>Full-charge requirement, all models</h3>
+            <p>
+              Assumptions: charge from grid during the free window, 90%
+              round-trip efficiency, starting from the usable battery capacity
+              listed for each system. The solid bar is battery charging power;
+              the pale cap is the measured direct household load during that
+              same free window. Any loads you deliberately move into the free
+              window reduce the battery energy needed later, but they still add
+              to instantaneous grid draw while charging.
+            </p>
+          </div>
+          <canvas
+            id="chargeChart"
+            height="360"
+            aria-label="Battery charge power comparison across models"
+          ></canvas>
+          <div class="legend-row" aria-hidden="true">
+            <span><i class="legend-blue"></i>OVO 3-hour free window</span>
+            <span><i class="legend-green"></i>GloBird 4-hour free window</span>
+            <span><i class="legend-cap"></i>Measured direct house load</span>
+          </div>
+        </div>
       </section>
 
       <section class="section">

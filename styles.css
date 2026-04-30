@@ -260,6 +260,15 @@ p {
   margin-bottom: 32px;
 }
 
+.compact-heading {
+  margin-top: 34px;
+  margin-bottom: 18px;
+}
+
+.compact-heading h3 {
+  font-size: clamp(1.4rem, 2vw, 2rem);
+}
+
 .chart-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
@@ -273,6 +282,45 @@ canvas {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
+}
+
+.charge-chart-block {
+  margin-top: 28px;
+}
+
+.legend-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-top: 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+  font-weight: 800;
+}
+
+.legend-row span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.legend-row i {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+}
+
+.legend-blue {
+  background: var(--blue);
+}
+
+.legend-green {
+  background: var(--green);
+}
+
+.legend-cap {
+  background: #c7ced1;
 }
 
 .plan-list,
