@@ -18,6 +18,7 @@
       </a>
       <nav aria-label="Main navigation">
         <a href="#plans">Plans</a>
+        <a href="#market">Market</a>
         <a href="#battery">Battery</a>
         <a href="#ha">HA Data</a>
       </nav>
@@ -55,9 +56,9 @@
           <span>OVO Free 3 annual estimate</span>
         </div>
         <div>
-          <span class="metric-label">Cheapest quote shown</span>
-          <strong>$2,507</strong>
-          <span>GloBird BOOST, no free window strategy</span>
+          <span class="metric-label">Market scan best</span>
+          <strong id="marketBestMetric">$2,245</strong>
+          <span id="marketBestText">ENGIE Perks Plus modelled against HA load</span>
         </div>
         <div>
           <span class="metric-label">FOUR4FREE lowest</span>
@@ -68,6 +69,73 @@
           <span class="metric-label">HA status</span>
           <strong>Live</strong>
           <span>11,056 Shelly EM samples analysed</span>
+        </div>
+      </section>
+
+      <section id="market" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Retailer market scan</p>
+          <h2>Endeavour plans ranked against your load</h2>
+          <p>
+            This uses official Energy Made Easy / CDR plan data for postcode
+            2516 and the Shelly EM load shape. Rates are normalised to inc GST
+            and annualised from the HA sample. Demand charges, controlled-load
+            usage, export credits, and VPP event credits are flagged rather
+            than silently guessed.
+          </p>
+        </div>
+
+        <div class="market-summary" aria-label="Market scan summary">
+          <div>
+            <span>Plans scanned</span>
+            <strong id="marketPlanCount">606</strong>
+          </div>
+          <div>
+            <span>Retailers with eligible plans</span>
+            <strong id="marketRetailerCount">8</strong>
+          </div>
+          <div>
+            <span>HA annualised use</span>
+            <strong id="marketAnnualUse">6,264 kWh</strong>
+          </div>
+          <div>
+            <span>Best modelled offer</span>
+            <strong id="marketBestOffer">$2,245</strong>
+          </div>
+        </div>
+
+        <div class="chart-layout market-layout">
+          <canvas id="marketChart" height="340" aria-label="Top market plans modelled annual cost"></canvas>
+          <div class="market-notes">
+            <h3>What is incorporated</h3>
+            <p id="marketScope">
+              AGL, Origin, EnergyAustralia, Nectr, Powershop, Amber, ENGIE,
+              Dodo, and GloBird CDR endpoints were checked; eligible Endeavour
+              residential electricity plans were modelled.
+            </p>
+            <h3>Current ranking basis</h3>
+            <p>
+              The ranking is your HA-derived household load profile, not the
+              generic 7,400 kWh reference customer. Free windows are valued by
+              assigning your measured daytime load into those zero-rate hours.
+            </p>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Retailer / plan</th>
+                <th>Modelled annual</th>
+                <th>Supply</th>
+                <th>Usage rates</th>
+                <th>Free window / notes</th>
+              </tr>
+            </thead>
+            <tbody id="marketTable"></tbody>
+          </table>
         </div>
       </section>
 

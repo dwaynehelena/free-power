@@ -328,6 +328,7 @@ canvas {
 .decision-grid,
 .model-grid,
 .battery-grid,
+.market-summary,
 .status-list {
   display: grid;
   gap: 14px;
@@ -338,10 +339,49 @@ canvas {
 .decision-grid article,
 .model-panel,
 .result-panel,
+.market-summary div,
+.market-notes,
 .status-list div {
   border: 1px solid var(--line);
   border-radius: 8px;
   background: #fff;
+}
+
+.market-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 28px;
+}
+
+.market-summary div {
+  min-height: 132px;
+  padding: 20px;
+}
+
+.market-summary span {
+  display: block;
+  color: var(--muted);
+  font-size: 0.88rem;
+  font-weight: 750;
+  line-height: 1.4;
+}
+
+.market-summary strong {
+  display: block;
+  margin-top: 10px;
+  font-size: clamp(2rem, 3.4vw, 3.2rem);
+  line-height: 1;
+}
+
+.market-layout {
+  margin-bottom: 28px;
+}
+
+.market-notes {
+  padding: 20px;
+}
+
+.market-notes p:last-child {
+  margin-bottom: 0;
 }
 
 .plan-item {
@@ -401,6 +441,10 @@ th {
 
 td {
   color: #2e3a40;
+}
+
+td span {
+  color: var(--muted);
 }
 
 tbody tr:last-child td {
@@ -552,6 +596,7 @@ footer {
   }
 
   .metric-band,
+  .market-summary,
   .model-grid,
   .decision-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -578,6 +623,7 @@ footer {
   }
 
   .metric-band,
+  .market-summary,
   .model-grid,
   .decision-grid {
     grid-template-columns: 1fr;

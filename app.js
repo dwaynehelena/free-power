@@ -72,6 +72,91 @@ const currency = new Intl.NumberFormat("en-AU", {
   maximumFractionDigits: 0,
 });
 
+const number = new Intl.NumberFormat("en-AU", {
+  maximumFractionDigits: 0,
+});
+
+const fallbackMarketData = {
+  planCount: 606,
+  retailerCount: 8,
+  modelBasis: {
+    annualisedKwh: 6263.533624812189,
+  },
+  providerStatus: [
+    { brand: "agl", eligible: 68 },
+    { brand: "origin", eligible: 154 },
+    { brand: "energyaustralia", eligible: 64 },
+    { brand: "nectr", eligible: 12 },
+    { brand: "powershop", eligible: 36 },
+    { brand: "amber", eligible: 21 },
+    { brand: "engie", eligible: 240 },
+    { brand: "dodo", eligible: 4 },
+    { brand: "globird", eligible: 28 },
+  ],
+  plans: [
+    {
+      rank: 1,
+      retailer: "ENGIE",
+      name: "ENGIE Perks Plus Elec",
+      modelledAnnualAfterDiscountIncGst: 2245,
+      dailySupplyIncGst: 1.16864,
+      usageRatesIncGst: [0.2989, 0.4758, 0.5659],
+      modelQuality: "profiled",
+      warnings: [],
+    },
+    {
+      rank: 3,
+      retailer: "GloBird Energy",
+      name: "BOOST Residential (Flexible Rate)-Endeavour",
+      modelledAnnualAfterDiscountIncGst: 2251,
+      dailySupplyIncGst: 1.298,
+      usageRatesIncGst: [0.2365, 0.275, 0.4026],
+      modelQuality: "profiled",
+      warnings: [],
+    },
+    {
+      rank: 9,
+      retailer: "Origin Energy",
+      name: "Origin Affinity Variable ePlus",
+      modelledAnnualAfterDiscountIncGst: 2301,
+      dailySupplyIncGst: 1.03631,
+      usageRatesIncGst: [0.2559, 0.3861, 0.4817],
+      modelQuality: "profiled",
+      warnings: [],
+    },
+  ],
+};
+
+let marketData = fallbackMarketData;
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;");
+}
+
+function moneyValue(value) {
+  return Number.isFinite(value) ? currency.format(value) : "Not modelled";
+}
+
+function uniqueMarketPlans(plansToRank, limit = 12) {
+  const seen = new Set();
+  const ranked = [];
+  plansToRank
+    .filter((plan) => Number.isFinite(plan.modelledAnnualAfterDiscountIncGst))
+    .forEach((plan) => {
+      const rateKey = (plan.usageRatesIncGst || []).map((rate) => Number(rate).toFixed(4)).join("/");
+      const key = `${plan.retailer}|${plan.name}|${Number(plan.dailySupplyIncGst || 0).toFixed(4)}|${rateKey}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        ranked.push(plan);
+      }
+    });
+  return ranked.slice(0, limit);
+}
+
 function drawPlanChart() {
   const canvas = document.getElementById("planChart");
   const ctx = canvas.getContext("2d");
@@ -129,6 +214,124 @@ function drawPlanChart() {
   ctx.fillStyle = "#60707a";
   ctx.font = "700 12px Inter, system-ui, sans-serif";
   ctx.fillText("Annual estimate inc GST", padding.left, 18);
+}
+
+function drawMarketChart() {
+  const canvas = document.getElementById("marketChart");
+  if (!canvas) return;
+
+  const top = uniqueMarketPlans(marketData.plans || [], 10);
+  const ctx = canvas.getContext("2d");
+  const ratio = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  canvas.width = rect.width * ratio;
+  canvas.height = 340 * ratio;
+  ctx.scale(ratio, ratio);
+
+  const width = rect.width;
+  const height = 340;
+  const padding = { top: 30, right: 26, bottom: 82, left: 66 };
+  const chartWidth = width - padding.left - padding.right;
+  const chartHeight = height - padding.top - padding.bottom;
+  const max = Math.max(...top.map((plan) => plan.modelledAnnualAfterDiscountIncGst), 2600) * 1.08;
+  const barGap = 10;
+  const barWidth = Math.max(18, (chartWidth - barGap * Math.max(0, top.length - 1)) / Math.max(1, top.length));
+
+  ctx.clearRect(0, 0, width, height);
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, width, height);
+  ctx.strokeStyle = "#d8ded7";
+  ctx.lineWidth = 1;
+  ctx.font = "12px Inter, system-ui, sans-serif";
+  ctx.fillStyle = "#60707a";
+
+  for (let i = 0; i <= 4; i += 1) {
+    const y = padding.top + chartHeight * (i / 4);
+    ctx.beginPath();
+    ctx.moveTo(padding.left, y);
+    ctx.lineTo(width - padding.right, y);
+    ctx.stroke();
+  }
+
+  top.forEach((plan, index) => {
+    const x = padding.left + index * (barWidth + barGap);
+    const value = plan.modelledAnnualAfterDiscountIncGst;
+    const barHeight = (value / max) * chartHeight;
+    const y = padding.top + chartHeight - barHeight;
+    ctx.fillStyle = index === 0 ? "#16805a" : index < 3 ? "#285f9e" : "#6d7780";
+    ctx.fillRect(x, y, barWidth, barHeight);
+    ctx.fillStyle = "#182026";
+    ctx.textAlign = "center";
+    ctx.font = "700 11px Inter, system-ui, sans-serif";
+    ctx.fillText(currency.format(value), x + barWidth / 2, y - 8);
+    ctx.save();
+    ctx.translate(x + barWidth / 2, height - 18);
+    ctx.rotate(-0.35);
+    ctx.fillStyle = "#60707a";
+    ctx.font = "700 10px Inter, system-ui, sans-serif";
+    ctx.fillText(String(plan.retailer || "").replace(" Energy", ""), 0, 0);
+    ctx.restore();
+  });
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#60707a";
+  ctx.font = "700 12px Inter, system-ui, sans-serif";
+  ctx.fillText("Top distinct plans, modelled annual cost inc GST", padding.left, 18);
+}
+
+function renderMarketScan() {
+  const top = uniqueMarketPlans(marketData.plans || [], 12);
+  const best = top[0];
+  const annualUse = marketData.modelBasis?.annualisedKwh;
+  const checkedProviders = (marketData.providerStatus || [])
+    .map((provider) => provider.brand)
+    .join(", ");
+  const eligibleProviders = (marketData.providerStatus || [])
+    .filter((provider) => provider.eligible)
+    .map((provider) => provider.brand)
+    .join(", ");
+
+  document.getElementById("marketPlanCount").textContent = number.format(marketData.planCount || 0);
+  document.getElementById("marketRetailerCount").textContent = number.format(marketData.retailerCount || 0);
+  document.getElementById("marketAnnualUse").textContent = `${number.format(annualUse || 0)} kWh`;
+  document.getElementById("marketBestOffer").textContent = best
+    ? moneyValue(best.modelledAnnualAfterDiscountIncGst)
+    : "Not modelled";
+  document.getElementById("marketBestMetric").textContent = best
+    ? moneyValue(best.modelledAnnualAfterDiscountIncGst)
+    : "$2,245";
+  document.getElementById("marketBestText").textContent = best
+    ? `${best.retailer} ${best.name}`.slice(0, 68)
+    : "Best CDR plan modelled against HA load";
+  document.getElementById("marketScope").textContent = checkedProviders
+    ? `${checkedProviders} CDR endpoints were checked. Eligible Endeavour plans were found for ${eligibleProviders}; providers with zero eligible records are retained in the generated data.`
+    : "Official CDR endpoints were checked; eligible Endeavour residential electricity plans were modelled.";
+
+  document.getElementById("marketTable").innerHTML = top
+    .map((plan, index) => {
+      const rates = (plan.usageRatesIncGst || [])
+        .slice(0, 4)
+        .map((rate) => `${(rate * 100).toFixed(2)} c/kWh`)
+        .join(", ");
+      const freeWindow = plan.freeWindow ? `Free ${plan.freeWindow}` : "";
+      const discounts = plan.discountRate ? `${(plan.discountRate * 100).toFixed(0)}% conditional discount modelled` : "";
+      const warnings = (plan.warnings || []).slice(0, 1).join(" ");
+      const notes = [freeWindow, discounts, warnings || plan.modelQuality].filter(Boolean).join(" ");
+      return `
+        <tr>
+          <td>${index + 1}</td>
+          <td>
+            <strong>${escapeHtml(plan.retailer)}</strong><br>
+            <span>${escapeHtml(plan.name)}</span>
+          </td>
+          <td>${moneyValue(plan.modelledAnnualAfterDiscountIncGst)}</td>
+          <td>${plan.dailySupplyIncGst ? `${(plan.dailySupplyIncGst * 100).toFixed(1)} c/day` : "Unknown"}</td>
+          <td>${escapeHtml(rates || "Unparsed")}</td>
+          <td>${escapeHtml(notes)}</td>
+        </tr>
+      `;
+    })
+    .join("");
 }
 
 function renderPlanList() {
@@ -311,12 +514,30 @@ function renderBattery() {
 window.addEventListener("resize", () => {
   drawPlanChart();
   drawChargeChart();
+  drawMarketChart();
 });
 document.getElementById("annualGap").addEventListener("input", updateBreakEven);
 document.getElementById("avoidedRate").addEventListener("input", updateBreakEven);
 
-renderPlanList();
-renderBattery();
-updateBreakEven();
-drawPlanChart();
-drawChargeChart();
+async function loadMarketData() {
+  try {
+    const response = await fetch("./data/market-scan.json", { cache: "no-store" });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    marketData = await response.json();
+  } catch (error) {
+    console.warn("Using fallback market data", error);
+  }
+}
+
+async function init() {
+  renderPlanList();
+  renderBattery();
+  updateBreakEven();
+  await loadMarketData();
+  renderMarketScan();
+  drawPlanChart();
+  drawChargeChart();
+  drawMarketChart();
+}
+
+init();
