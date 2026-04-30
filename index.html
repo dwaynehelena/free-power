@@ -3,23 +3,334 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Free Power</title>
+    <title>Free Power | Energy Plan and Battery Model</title>
     <meta
       name="description"
-      content="Free Power is a new project workspace."
+      content="Visual comparison of OVO Free 3, GloBird FOUR4FREE, and battery sizing for a low-bill home energy strategy."
     >
     <link rel="stylesheet" href="./styles.css">
   </head>
   <body>
-    <main class="page">
-      <section class="hero" aria-labelledby="page-title">
-        <p class="kicker">New project</p>
-        <h1 id="page-title">Free Power</h1>
-        <p class="intro">
-          A focused workspace for building, testing, and publishing the next
-          version of the Free Power project.
-        </p>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Free Power home">
+        <span class="brand-mark">FP</span>
+        <span>Free Power</span>
+      </a>
+      <nav aria-label="Main navigation">
+        <a href="#plans">Plans</a>
+        <a href="#battery">Battery</a>
+        <a href="#ha">HA Data</a>
+      </nav>
+    </header>
+
+    <main id="top">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">32 Alanson Ave, Bulli NSW 2516</p>
+          <h1>Energy plan and battery model</h1>
+          <p>
+            A visual model comparing your existing OVO Free 3 quote against
+            GloBird FOUR4FREE, BOOST, and battery-backed free-window charging.
+          </p>
+        </div>
+        <div class="hero-visual" aria-label="Daily free energy window diagram">
+          <div class="sun"></div>
+          <div class="timeline">
+            <span>00</span>
+            <span>06</span>
+            <span>10</span>
+            <span>14</span>
+            <span>18</span>
+            <span>24</span>
+            <div class="window ovo-window">OVO free 11-2</div>
+            <div class="window globird-window">GloBird free 10-2</div>
+          </div>
+        </div>
+      </section>
+
+      <section class="metric-band" aria-label="Headline comparison">
+        <div>
+          <span class="metric-label">Current quote</span>
+          <strong>$2,772</strong>
+          <span>OVO Free 3 annual estimate</span>
+        </div>
+        <div>
+          <span class="metric-label">Cheapest quote shown</span>
+          <strong>$2,507</strong>
+          <span>GloBird BOOST, no free window strategy</span>
+        </div>
+        <div>
+          <span class="metric-label">FOUR4FREE lowest</span>
+          <strong>$2,877</strong>
+          <span>With all listed conditional discounts</span>
+        </div>
+        <div>
+          <span class="metric-label">HA status</span>
+          <strong>Live</strong>
+          <span>11,056 Shelly EM samples analysed</span>
+        </div>
+      </section>
+
+      <section id="plans" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Plan economics</p>
+          <h2>Quoted annual cost</h2>
+          <p>
+            The public comparison is simple: FOUR4FREE is not cheaper than your
+            current OVO quote unless the extra free hour or battery charging
+            capability is worth more than the annual gap.
+          </p>
+        </div>
+
+        <div class="chart-layout">
+          <canvas id="planChart" height="320" aria-label="Annual plan cost bar chart"></canvas>
+          <div class="plan-list" id="planList"></div>
+        </div>
+      </section>
+
+      <section class="section split">
+        <div>
+          <p class="eyebrow">Rate table</p>
+          <h2>OVO vs GloBird FOUR4FREE</h2>
+          <p>
+            GloBird gives a longer free window, but the paid-period rates and
+            supply charge are higher than the OVO quote you pasted.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Charge</th>
+                <th>OVO Free 3</th>
+                <th>GloBird FOUR4FREE after discount</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Daily supply</td>
+                <td>122.1 c/day</td>
+                <td>141.911 c/day</td>
+              </tr>
+              <tr>
+                <td>Free window</td>
+                <td>11 AM-2 PM</td>
+                <td>10 AM-2 PM</td>
+              </tr>
+              <tr>
+                <td>Peak usage</td>
+                <td>37.62 c/kWh</td>
+                <td>44.814 c/kWh</td>
+              </tr>
+              <tr>
+                <td>Off-peak / shoulder</td>
+                <td>24.75 c/kWh off-peak</td>
+                <td>35.211 c/kWh shoulder</td>
+              </tr>
+              <tr>
+                <td>Controlled load</td>
+                <td>23.87 c/kWh</td>
+                <td>27.742 c/kWh</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Break-even</p>
+          <h2>What the extra hour must be worth</h2>
+          <p>
+            FOUR4FREE’s extra 10-11 AM free hour has to overcome a higher annual
+            plan estimate. The sliders show how much daily load must move into
+            that one-hour gap.
+          </p>
+        </div>
+        <div class="model-grid">
+          <div class="model-panel">
+            <label for="annualGap">Annual gap to recover</label>
+            <input id="annualGap" type="range" min="0" max="250" step="1" value="105">
+            <output id="annualGapOutput">$105/year</output>
+          </div>
+          <div class="model-panel">
+            <label for="avoidedRate">Avoided energy rate</label>
+            <input id="avoidedRate" type="range" min="15" max="50" step="0.25" value="24.75">
+            <output id="avoidedRateOutput">24.75 c/kWh</output>
+          </div>
+          <div class="result-panel">
+            <span>Required shift into 10-11 AM</span>
+            <strong id="breakEvenDaily">1.16 kWh/day</strong>
+            <span id="breakEvenAnnual">424 kWh/year</span>
+          </div>
+        </div>
+      </section>
+
+      <section id="battery" class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Battery model</p>
+          <h2>Capacity and charge-power scenarios</h2>
+          <p>
+            Battery capacity is driven by paid-window household load. This run
+            used 9 complete-ish days of Shelly EM history from Home Assistant
+            and sizes to the 95th percentile paid-window day.
+          </p>
+        </div>
+
+        <div class="battery-grid">
+          <div class="battery-visual">
+            <div class="battery-shell">
+              <div class="battery-fill" id="batteryFill"></div>
+            </div>
+            <div>
+              <strong id="usableKwhLabel">16.7 kWh usable</strong>
+              <span>Scenario selected below</span>
+            </div>
+          </div>
+          <div class="scenario-list" id="scenarioList"></div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Scenario</th>
+                <th>Usable battery</th>
+                <th>Nominal battery with 10% reserve</th>
+                <th>OVO 3-hour charge power</th>
+                <th>GloBird 4-hour charge power</th>
+              </tr>
+            </thead>
+            <tbody id="batteryTable"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Battery shortlist</p>
+          <h2>Systems that fit the model</h2>
+          <p>
+            Your HA data points to about 16.7 kWh usable for the OVO 95th
+            percentile paid-window day. The monthly value of the battery is
+            modelled at $88-$134/month, with $107/month as the central case.
+          </p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>System</th>
+                <th>Why it fits</th>
+                <th>Likely post-rebate cost</th>
+                <th>7-year payment at 6.5%</th>
+                <th>Payback vs central saving</th>
+                <th>Verdict</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>Sungrow SBH/SBR around 19.2 kWh</td>
+                <td>Meets OVO p95 capacity and has enough charge/discharge power with a suitable hybrid inverter.</td>
+                <td>About $10.9k-$12.3k after a 30% federal discount, before site-specific extras.</td>
+                <td>About $172/month on an $11.55k financed balance.</td>
+                <td>About 9.0 years cash payback.</td>
+                <td>Best-fit value option if inverter compatibility works.</td>
+              </tr>
+              <tr>
+                <td>Tesla Powerwall 3 + Expansion, 27 kWh</td>
+                <td>Plenty of storage, strong backup output. Current AC charge limit is the watch item for OVO.</td>
+                <td>About $12.6k-$15.4k after a 30% federal discount.</td>
+                <td>About $208/month on a $14k financed balance.</td>
+                <td>About 10.9 years cash payback.</td>
+                <td>Good hardware, weaker economics unless backup value matters.</td>
+              </tr>
+              <tr>
+                <td>Sigenergy SigenStor 16-23 kWh class</td>
+                <td>Modular, strong inverter options, and good fit for tariff automation.</td>
+                <td>Roughly $11k-$14.5k after rebate depending on module count and gateway/inverter.</td>
+                <td>About $163-$215/month.</td>
+                <td>About 8.6-11.3 years cash payback.</td>
+                <td>Best if you want modular growth, backup, and future EV integration.</td>
+              </tr>
+              <tr>
+                <td>Single Tesla Powerwall 3, 13.5 kWh</td>
+                <td>Covers average paid-window use but misses the OVO p95 target.</td>
+                <td>About $9.1k-$11.9k after rebate.</td>
+                <td>About $156/month on a $10.5k financed balance.</td>
+                <td>About 8.2 years cash payback if savings are not clipped.</td>
+                <td>Too small for the p95 zero-usage target.</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section id="ha" class="section split">
+        <div>
+          <p class="eyebrow">Home Assistant</p>
+          <h2>Shelly EM data status</h2>
+          <p>
+            Home Assistant became reachable over Tailscale on MacBook Pro 2 at
+            `100.97.49.102:8123`. The model used Shelly EM channel 1 power
+            history and ignored gaps longer than 20 minutes.
+          </p>
+        </div>
+        <div class="status-list">
+          <div>
+            <span>Sensor expected</span>
+            <strong>sensor.shelly_em_channel_1_power</strong>
+          </div>
+          <div>
+            <span>HA endpoint used</span>
+            <strong>100.97.49.102:8123</strong>
+          </div>
+          <div>
+            <span>Current channel 1 reading</span>
+            <strong>687.86 W</strong>
+          </div>
+          <div>
+            <span>Samples analysed</span>
+            <strong>11,056 samples, 9 complete-ish days</strong>
+          </div>
+          <div>
+            <span>OVO model, 11 AM-2 PM free</span>
+            <strong>16.7 kWh usable / 18.5 kWh nominal</strong>
+          </div>
+          <div>
+            <span>GloBird model, 10 AM-2 PM free</span>
+            <strong>15.0 kWh usable / 16.7 kWh nominal</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="section">
+        <div class="section-heading">
+          <p class="eyebrow">Recommendation</p>
+          <h2>Decision summary</h2>
+        </div>
+        <div class="decision-grid">
+          <article>
+            <h3>Lowest quoted annual cost</h3>
+            <p>GloBird BOOST at $2,507/year, but it is not the free-window battery play.</p>
+          </article>
+          <article>
+            <h3>Best current free-window comparison</h3>
+            <p>OVO remains better than FOUR4FREE on quoted annual cost unless the 10-11 AM hour is heavily used.</p>
+          </article>
+          <article>
+            <h3>Battery sizing target</h3>
+            <p>Model OVO first. FOUR4FREE matters if your inverter cannot recharge enough battery in three free hours.</p>
+          </article>
+        </div>
       </section>
     </main>
+
+    <footer>
+      <span>Model generated 1 May 2026.</span>
+      <span>Indicative only. Bills depend on actual interval usage, controlled load, demand, and retailer eligibility.</span>
+    </footer>
+
+    <script src="./app.js"></script>
   </body>
 </html>
