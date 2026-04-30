@@ -28,6 +28,12 @@ const batteryOptions = [
     note: "Best-fit value",
   },
   {
+    name: "Sungrow + pool lift",
+    usable: 24.4,
+    chargeLimit: 10,
+    note: "House plus 1°C pool catch-up",
+  },
+  {
     name: "Sigenergy 20 kWh",
     usable: 20,
     chargeLimit: 8,
@@ -45,12 +51,20 @@ const batteryOptions = [
     chargeLimit: 10,
     note: "Headroom option",
   },
+  {
+    name: "Sigenergy + pool lift",
+    usable: 28.6,
+    chargeLimit: 10,
+    note: "House plus 1°C pool catch-up",
+  },
 ];
 
 const measuredFreeWindowLoad = {
   ovo: 5.463177505182682 / 3,
   globird: 6.222270324697016 / 4,
 };
+
+const poolCatchupKwh = 20.65791 / 4;
 
 const currency = new Intl.NumberFormat("en-AU", {
   style: "currency",
