@@ -12,6 +12,8 @@ const batteryScenarios = [
   { name: "GloBird p95 paid-window day", usable: 15.00029417015903 },
   { name: "OVO p95 paid-window day", usable: 16.65752128926649 },
   { name: "Highest observed OVO paid-window day", usable: 18.09123841247981 },
+  { name: "GloBird p95 + pool cold headroom", usable: 20.2 },
+  { name: "OVO p95 + pool cold headroom", usable: 21.8 },
 ];
 
 const batteryOptions = [
@@ -65,6 +67,7 @@ const measuredFreeWindowLoad = {
 };
 
 const poolCatchupKwh = 20.65791 / 4;
+const poolMaintenanceKwhPerDay = 2.2;
 
 const currency = new Intl.NumberFormat("en-AU", {
   style: "currency",
@@ -81,6 +84,12 @@ const fallbackMarketData = {
   retailerCount: 8,
   modelBasis: {
     annualisedKwh: 6263.533624812189,
+    annualisedKwhWithPool: 7066.533624812189,
+    usageScenarios: {
+      low: { totalAnnualKwh: 5684, description: "Mild covered-pool use" },
+      medium: { totalAnnualKwh: 7067, description: "Current HA load plus covered pool" },
+      high: { totalAnnualKwh: 9295, description: "Winter HVAC plus pool catch-up" },
+    },
   },
   providerStatus: [
     { brand: "agl", eligible: 68 },
@@ -96,21 +105,33 @@ const fallbackMarketData = {
   plans: [
     {
       rank: 1,
-      retailer: "ENGIE",
-      name: "ENGIE Perks Plus Elec",
-      modelledAnnualAfterDiscountIncGst: 2245,
-      dailySupplyIncGst: 1.16864,
-      usageRatesIncGst: [0.2989, 0.4758, 0.5659],
+      retailer: "GloBird Energy",
+      name: "BOOST Residential (Flexible Rate)-Endeavour",
+      modelledAnnualAfterDiscountIncGst: 2441,
+      modelledPoolAnnualCostIncGst: 190,
+      scenarioCosts: {
+        low: { annualAfterDiscountIncGst: 2088 },
+        medium: { annualAfterDiscountIncGst: 2441 },
+        high: { annualAfterDiscountIncGst: 3020 },
+      },
+      dailySupplyIncGst: 1.298,
+      usageRatesIncGst: [0.2365, 0.275, 0.4026],
       modelQuality: "profiled",
       warnings: [],
     },
     {
       rank: 3,
-      retailer: "GloBird Energy",
-      name: "BOOST Residential (Flexible Rate)-Endeavour",
-      modelledAnnualAfterDiscountIncGst: 2251,
-      dailySupplyIncGst: 1.298,
-      usageRatesIncGst: [0.2365, 0.275, 0.4026],
+      retailer: "ENGIE",
+      name: "ENGIE Perks Plus Elec",
+      modelledAnnualAfterDiscountIncGst: 2447,
+      modelledPoolAnnualCostIncGst: 240,
+      scenarioCosts: {
+        low: { annualAfterDiscountIncGst: 2072 },
+        medium: { annualAfterDiscountIncGst: 2447 },
+        high: { annualAfterDiscountIncGst: 3061 },
+      },
+      dailySupplyIncGst: 1.16864,
+      usageRatesIncGst: [0.2989, 0.4758, 0.5659],
       modelQuality: "profiled",
       warnings: [],
     },
@@ -119,6 +140,12 @@ const fallbackMarketData = {
       retailer: "Origin Energy",
       name: "Origin Affinity Variable ePlus",
       modelledAnnualAfterDiscountIncGst: 2301,
+      modelledPoolAnnualCostIncGst: 205,
+      scenarioCosts: {
+        low: { annualAfterDiscountIncGst: 1970 },
+        medium: { annualAfterDiscountIncGst: 2301 },
+        high: { annualAfterDiscountIncGst: 2930 },
+      },
       dailySupplyIncGst: 1.03631,
       usageRatesIncGst: [0.2559, 0.3861, 0.4817],
       modelQuality: "profiled",
@@ -282,7 +309,7 @@ function drawMarketChart() {
 function renderMarketScan() {
   const top = uniqueMarketPlans(marketData.plans || [], 12);
   const best = top[0];
-  const annualUse = marketData.modelBasis?.annualisedKwh;
+  const annualUse = marketData.modelBasis?.annualisedKwhWithPool || marketData.modelBasis?.annualisedKwh;
   const checkedProviders = (marketData.providerStatus || [])
     .map((provider) => provider.brand)
     .join(", ");
@@ -299,10 +326,13 @@ function renderMarketScan() {
     : "Not modelled";
   document.getElementById("marketBestMetric").textContent = best
     ? moneyValue(best.modelledAnnualAfterDiscountIncGst)
-    : "$2,245";
+    : "$2,441";
   document.getElementById("marketBestText").textContent = best
     ? `${best.retailer} ${best.name}`.slice(0, 68)
     : "Best CDR plan modelled against HA load";
+  document.getElementById("execBestPlan").textContent = best
+    ? `${best.retailer} ${best.name}: ${moneyValue(best.modelledAnnualAfterDiscountIncGst)} in the medium case, including scheduled covered-pool heating.`
+    : "Market scan data is not available.";
   document.getElementById("marketScope").textContent = checkedProviders
     ? `${checkedProviders} CDR endpoints were checked. Eligible Endeavour plans were found for ${eligibleProviders}; providers with zero eligible records are retained in the generated data.`
     : "Official CDR endpoints were checked; eligible Endeavour residential electricity plans were modelled.";
@@ -315,8 +345,11 @@ function renderMarketScan() {
         .join(", ");
       const freeWindow = plan.freeWindow ? `Free ${plan.freeWindow}` : "";
       const discounts = plan.discountRate ? `${(plan.discountRate * 100).toFixed(0)}% conditional discount modelled` : "";
+      const poolCost = Number.isFinite(plan.modelledPoolAnnualCostIncGst)
+        ? `Pool ${currency.format(plan.modelledPoolAnnualCostIncGst)}/yr`
+        : "";
       const warnings = (plan.warnings || []).slice(0, 1).join(" ");
-      const notes = [freeWindow, discounts, warnings || plan.modelQuality].filter(Boolean).join(" ");
+      const notes = [freeWindow, poolCost, discounts, warnings || plan.modelQuality].filter(Boolean).join(" ");
       return `
         <tr>
           <td>${index + 1}</td>
@@ -324,7 +357,9 @@ function renderMarketScan() {
             <strong>${escapeHtml(plan.retailer)}</strong><br>
             <span>${escapeHtml(plan.name)}</span>
           </td>
-          <td>${moneyValue(plan.modelledAnnualAfterDiscountIncGst)}</td>
+          <td>${moneyValue(plan.scenarioCosts?.low?.annualAfterDiscountIncGst)}</td>
+          <td>${moneyValue(plan.scenarioCosts?.medium?.annualAfterDiscountIncGst ?? plan.modelledAnnualAfterDiscountIncGst)}</td>
+          <td>${moneyValue(plan.scenarioCosts?.high?.annualAfterDiscountIncGst)}</td>
           <td>${plan.dailySupplyIncGst ? `${(plan.dailySupplyIncGst * 100).toFixed(1)} c/day` : "Unknown"}</td>
           <td>${escapeHtml(rates || "Unparsed")}</td>
           <td>${escapeHtml(notes)}</td>
@@ -505,7 +540,7 @@ function renderBattery() {
       list.querySelectorAll("button").forEach((item) => item.classList.remove("active"));
       button.classList.add("active");
       const scenario = batteryScenarios[Number(button.dataset.index)];
-      document.getElementById("usableKwhLabel").textContent = `${scenario.usable} kWh usable`;
+      document.getElementById("usableKwhLabel").textContent = `${scenario.usable.toFixed(1)} kWh usable`;
       document.getElementById("batteryFill").style.width = `${Math.min(92, 28 + scenario.usable * 2.2)}%`;
     });
   });

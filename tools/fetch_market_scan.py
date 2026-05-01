@@ -22,6 +22,29 @@ OUT_PATH = DATA_DIR / "market-scan.json"
 POSTCODE = "2516"
 NETWORK_MATCH = ("endeavour", "essential energy - endeavour")
 GST = 1.1
+POOL_DAILY_KWH = 2.2
+POOL_ANNUAL_KWH = POOL_DAILY_KWH * 365
+BASE_ANNUAL_KWH = 6263.533624812189
+USAGE_SCENARIOS = {
+    "low": {
+        "label": "Low",
+        "houseAnnualKwh": BASE_ANNUAL_KWH * 0.85,
+        "poolDailyKwh": 1.2,
+        "description": "Covered pool, mild weather, most pool heating and flexible load kept inside cheap/free windows.",
+    },
+    "medium": {
+        "label": "Medium",
+        "houseAnnualKwh": BASE_ANNUAL_KWH,
+        "poolDailyKwh": 2.2,
+        "description": "Current HA load shape plus covered pool maintenance to hold 20C.",
+    },
+    "high": {
+        "label": "High",
+        "houseAnnualKwh": BASE_ANNUAL_KWH * 1.18,
+        "poolDailyKwh": 5.2,
+        "description": "Winter HVAC, colder pool conditions, or catch-up heating equivalent to roughly 1C/day at COP 4.",
+    },
+}
 
 BRANDS = [
     "agl",
@@ -50,7 +73,27 @@ HA_PROFILE = {
     "samples": 11056,
     "completeDays": 9,
     "avgDailyKwh": 17.160366094005996,
-    "annualisedKwh": 6263.533624812189,
+    "annualisedKwh": BASE_ANNUAL_KWH,
+    "annualisedKwhWithPool": BASE_ANNUAL_KWH + POOL_ANNUAL_KWH,
+    "usageScenarios": {
+        key: {
+            **scenario,
+            "poolAnnualKwh": scenario["poolDailyKwh"] * 365,
+            "totalAnnualKwh": scenario["houseAnnualKwh"] + scenario["poolDailyKwh"] * 365,
+        }
+        for key, scenario in USAGE_SCENARIOS.items()
+    },
+    "pool": {
+        "dimensionsM": "2.7 x 4.7 x 1.4",
+        "volumeLitres": 17766,
+        "targetTemperatureC": 20,
+        "coverAssumption": "500 micron solar bubble blanket or better, fitted whenever not in use",
+        "maintenanceKwhPerDay": POOL_DAILY_KWH,
+        "maintenanceKwhPerYear": POOL_ANNUAL_KWH,
+        "schedulingRule": "Run the pool heat pump in the cheapest available tariff hours, preferring free windows.",
+        "catchUpKwhPerDegreeAtCop5": 20.65791 / 5,
+        "catchUpKwhPerDegreeAtCop4": 20.65791 / 4,
+    },
     "ovo": {
         "freeWindow": "11:00-14:00",
         "freeKwhPerDay": 5.463177505182682,
@@ -259,11 +302,18 @@ def free_window_from_windows(windows: list[RateWindow]) -> str | None:
     return ", ".join(f"{item.start_hour:02d}:00-{item.end_hour:02d}:00" for item in zero)
 
 
-def cost_against_profile(windows: list[RateWindow], supply: float | None) -> tuple[float | None, str]:
+def cost_against_profile(
+    windows: list[RateWindow],
+    supply: float | None,
+    *,
+    house_annual_kwh: float,
+    pool_daily_kwh: float,
+) -> tuple[float | None, float | None, str]:
     if not windows or supply is None:
-        return None, "partial"
+        return None, None, "partial"
     hourly = HA_PROFILE["hourlyFractions"]
-    annual_kwh = HA_PROFILE["annualisedKwh"]
+    annual_kwh = house_annual_kwh
+    pool_annual_kwh = pool_daily_kwh * 365
     cost = supply * 365
     matched_hours = 0
     for hour, fraction in enumerate(hourly):
@@ -278,17 +328,38 @@ def cost_against_profile(windows: list[RateWindow], supply: float | None) -> tup
             matched_hours += 1
     if matched_hours < 20:
         fallback_rate = min(window.rate for window in windows)
-        cost = supply * 365 + annual_kwh * fallback_rate
-        return cost, "partial"
-    return cost, "profiled"
+        pool_cost = pool_annual_kwh * fallback_rate
+        cost = supply * 365 + annual_kwh * fallback_rate + pool_cost
+        return cost, pool_cost, "partial"
+    cheapest_rate = min(window.rate for window in windows)
+    pool_cost = pool_annual_kwh * cheapest_rate
+    return cost + pool_cost, pool_cost, "profiled_pool_scheduled"
 
 
 def normalise_plan(summary: dict[str, Any], detail: dict[str, Any]) -> dict[str, Any]:
     contract = detail.get("electricityContract") or {}
     windows, supply, warnings = extract_rate_windows(contract)
-    annual, quality = cost_against_profile(windows, supply)
+    scenario_costs: dict[str, dict[str, Any]] = {}
+    for key, scenario in USAGE_SCENARIOS.items():
+        annual_for_scenario, pool_cost_for_scenario, scenario_quality = cost_against_profile(
+            windows,
+            supply,
+            house_annual_kwh=scenario["houseAnnualKwh"],
+            pool_daily_kwh=scenario["poolDailyKwh"],
+        )
+        scenario_costs[key] = {
+            "annualIncGst": annual_for_scenario,
+            "poolAnnualCostIncGst": pool_cost_for_scenario,
+            "annualAfterDiscountIncGst": None,
+            "quality": scenario_quality,
+        }
     discount, discount_labels = discount_rate(contract)
-    annual_discounted = annual * (1 - discount) if annual is not None else None
+    for scenario in scenario_costs.values():
+        annual_for_scenario = scenario["annualIncGst"]
+        scenario["annualAfterDiscountIncGst"] = (
+            annual_for_scenario * (1 - discount) if annual_for_scenario is not None else None
+        )
+    medium = scenario_costs["medium"]
     free_window = free_window_from_windows(windows)
     rates = sorted({round(window.rate, 4) for window in windows})
     incentives = [item.get("displayName") or item.get("description") for item in contract.get("incentives") or []]
@@ -310,9 +381,12 @@ def normalise_plan(summary: dict[str, Any], detail: dict[str, Any]) -> dict[str,
         "discountRate": discount,
         "discounts": discount_labels,
         "incentives": [item for item in incentives if item],
-        "modelledAnnualIncGst": annual,
-        "modelledAnnualAfterDiscountIncGst": annual_discounted,
-        "modelQuality": quality,
+        "modelledAnnualIncGst": medium["annualIncGst"],
+        "modelledAnnualAfterDiscountIncGst": medium["annualAfterDiscountIncGst"],
+        "modelledPoolAnnualCostIncGst": medium["poolAnnualCostIncGst"],
+        "modelledAnnualKwhWithPool": HA_PROFILE["annualisedKwhWithPool"],
+        "scenarioCosts": scenario_costs,
+        "modelQuality": medium["quality"],
         "warnings": sorted(set(warnings)),
     }
 
@@ -371,6 +445,7 @@ def main() -> int:
         "notes": [
             "CDR plan rates are converted to inc GST with a 1.10 multiplier where rates are supplied ex GST.",
             "Costs use the Shelly EM daily load shape and annualise the successful HA sample window.",
+            "Pool maintenance load is included as 2.2 kWh/day and scheduled into each plan's cheapest available tariff hours.",
             "Demand charges, controlled-load-specific usage, exports and VPP event credits require bill-grade interval data and are flagged where detected.",
             "Eligibility must be confirmed at signup because retailers can restrict meter types and tariffs.",
         ],

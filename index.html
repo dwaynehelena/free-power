@@ -57,8 +57,8 @@
         </div>
         <div>
           <span class="metric-label">Market scan best</span>
-          <strong id="marketBestMetric">$2,245</strong>
-          <span id="marketBestText">ENGIE Perks Plus modelled against HA load</span>
+          <strong id="marketBestMetric">$2,441</strong>
+          <span id="marketBestText">GloBird BOOST modelled with pool load</span>
         </div>
         <div>
           <span class="metric-label">FOUR4FREE lowest</span>
@@ -69,6 +69,40 @@
           <span class="metric-label">HA status</span>
           <strong>Live</strong>
           <span>11,056 Shelly EM samples analysed</span>
+        </div>
+      </section>
+
+      <section class="section exec-summary" aria-label="Executive summary">
+        <div class="section-heading">
+          <p class="eyebrow">Executive summary</p>
+          <h2>What the model says now</h2>
+          <p>
+            The pool is now included as a schedulable heat-pump load. Low,
+            medium, and high cases compare the same retailer plans against
+            different household and pool heating intensity.
+          </p>
+        </div>
+        <div class="decision-grid">
+          <article>
+            <h3>Best medium-case plan</h3>
+            <p id="execBestPlan">Loading market scan...</p>
+          </article>
+          <article>
+            <h3>Battery target</h3>
+            <p>
+              House-only remains around 15-17 kWh usable. With pool cold-weather
+              headroom, use 20-22 kWh as the minimum and 24-29 kWh as the
+              robust winter range.
+            </p>
+          </article>
+          <article>
+            <h3>Pool rule</h3>
+            <p>
+              Keep the cover on and run pool heating in the free or cheapest
+              tariff window. Uncovered winter heating is the scenario that
+              breaks the economics fastest.
+            </p>
+          </article>
         </div>
       </section>
 
@@ -100,7 +134,7 @@
           </div>
           <div>
             <span>Best modelled offer</span>
-            <strong id="marketBestOffer">$2,245</strong>
+            <strong id="marketBestOffer">$2,441</strong>
           </div>
         </div>
 
@@ -128,7 +162,9 @@
               <tr>
                 <th>Rank</th>
                 <th>Retailer / plan</th>
-                <th>Modelled annual</th>
+                <th>Low</th>
+                <th>Medium</th>
+                <th>High</th>
                 <th>Supply</th>
                 <th>Usage rates</th>
                 <th>Free window / notes</th>
@@ -333,6 +369,16 @@
                 <td>Electricity per 1°C</td>
                 <td>3.4-5.2 kWh at COP 6-4</td>
                 <td>Assume worse COP in cold/windy winter weather.</td>
+              </tr>
+              <tr>
+                <td>Medium model allowance</td>
+                <td>2.2 kWh/day, 803 kWh/year</td>
+                <td>Scheduled into the free or cheapest tariff window.</td>
+              </tr>
+              <tr>
+                <td>Low / high model range</td>
+                <td>1.2-5.2 kWh/day</td>
+                <td>Low is mild covered operation; high is winter catch-up at about 1°C/day.</td>
               </tr>
               <tr>
                 <td>Winter target</td>
